@@ -1,13 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { MaterialModule } from '../material/material.module';
 
 @Component({
-  selector: 'app-root',
-  imports: [RouterOutlet, MaterialModule],
-  templateUrl: './app.html',
-  styleUrl: './app.scss'
+    selector: 'app-root',
+    imports: [RouterOutlet],
+    template: `<router-outlet />`,
 })
-export class App {
-  protected readonly title = signal('x-power');
-}
+export class App {}

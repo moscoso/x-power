@@ -16,33 +16,28 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NgModule } from '@angular/core';
 
-
 const modules = [
     DragDropModule,
-	MatBadgeModule,
+    MatBadgeModule,
     MatButtonModule,
-	MatChipsModule,
+    MatChipsModule,
     MatDialogModule,
-	MatExpansionModule,
+    MatExpansionModule,
     MatFormFieldModule,
     MatGridListModule,
     MatIconModule,
     MatInputModule,
-	MatListModule,
+    MatListModule,
     MatMenuModule,
     MatRadioModule,
-	MatSliderModule,
+    MatSliderModule,
     MatStepperModule,
-	MatTooltipModule
+    MatTooltipModule,
 ];
 
 @NgModule({
     declarations: [],
-    imports: [
-        ...modules
-    ],
-    exports: [
-        ...modules
-    ]
+    imports: [...modules],
+    exports: [...modules],
 })
 export class MaterialModule {}
