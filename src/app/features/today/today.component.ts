@@ -1,9 +1,14 @@
 import { Component, inject, computed } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { HabitService } from '../../core/services/habit.service';
 import { CompletionService } from '../../core/services/completion.service';
 import { HabitCardComponent } from '../../shared/components/habit-card/habit-card.component';
-import { todayKey } from '../../core/models/habit.model';
+import { Habit, todayKey } from '../../core/models/habit.model';
 import { LucideAngularModule, Zap } from 'lucide-angular';
+import {
+    ProgressEntryComponent,
+    ProgressEntryData,
+} from './progress-entry.component';
 
 @Component({
     selector: 'app-today',
@@ -44,9 +49,10 @@ import { LucideAngularModule, Zap } from 'lucide-angular';
                         <app-habit-card
                             [habit]="habit"
                             [isCompleted]="completedIds().has(habit.id)"
+                            [currentValue]="currentValue(habit.id)"
                             [showToggle]="true"
                             [showActions]="false"
-                            (toggled)="toggle(habit.id)"
+                            (toggled)="handleToggle(habit)"
                         />
                     }
                 </div>
@@ -171,8 +177,9 @@ import { LucideAngularModule, Zap } from 'lucide-angular';
     ],
 })
 export class TodayComponent {
-    private habitService = inject(HabitService);
-    private completionService = inject(CompletionService);
+    private readonly habitService = inject(HabitService);
+    private readonly completionService = inject(CompletionService);
+    private readonly dialog = inject(MatDialog);
 
     protected readonly ZapIcon = Zap;
     protected readonly today = new Date();
@@ -209,7 +216,20 @@ export class TodayComponent {
         return { text: `${count} done. Don't stop now.`, type: 'cyan' };
     });
 
-    protected toggle(habitId: string): void {
-        this.completionService.toggle(habitId, todayKey());
+    protected currentValue(habitId: string): number {
+        return this.completionService.getProgressToday(habitId);
+    }
+
+    protected handleToggle(habit: Habit): void {
+        if (habit.target) {
+            const data: ProgressEntryData = { habit, date: todayKey() };
+            this.dialog.open(ProgressEntryComponent, {
+                data,
+                width: 'min(92vw, 440px)',
+                panelClass: 'cyber-dialog',
+            });
+        } else {
+            this.completionService.toggleBinary(habit.id, todayKey());
+        }
     }
 }

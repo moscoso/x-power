@@ -146,6 +146,7 @@ export class HabitListComponent {
     protected openForm(habit: Habit | null): void {
         const ref = this.dialog.open(HabitFormComponent, {
             data: habit,
+            width: 'min(92vw, 560px)',
             panelClass: 'cyber-dialog',
         });
         ref.afterClosed().subscribe(async (result) => {

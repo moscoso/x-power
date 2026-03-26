@@ -59,6 +59,16 @@ body {
     --mdc-outlined-text-field-focus-outline-color: var(--accent-cyan);
     --mdc-outlined-text-field-label-text-color: var(--text-muted);
     --mdc-outlined-text-field-input-text-color: var(--text-primary);
+    --mdc-outlined-text-field-container-shape: 6px;
+}
+
+/*
+ * Material MDC reserves a fixed block of space below every field for
+ * hint/error text even when none is present — this is the "negative margin"
+ * visual artefact. Hide it globally; re-enable per-component if needed.
+ */
+.mat-mdc-form-field-subscript-wrapper {
+    display: none !important;
 }
 
 /* Neon glow utility */
@@ -102,4 +112,57 @@ body {
 
 .fade-up {
     animation: fade-up 0.3s ease-out forwards;
+}
+
+/* Material select/autocomplete overlay panels */
+.mat-mdc-select-panel,
+.mdc-menu-surface {
+    background: var(--bg-elevated) !important;
+    border: 1px solid var(--border-bright) !important;
+    border-radius: 8px !important;
+}
+
+.mat-mdc-option {
+    color: var(--text-primary) !important;
+}
+
+.mat-mdc-option:hover,
+.mat-mdc-option.mat-mdc-option-active {
+    background: rgba(0, 229, 255, 0.08) !important;
+}
+
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+    background: rgba(0, 229, 255, 0.12) !important;
+    color: var(--accent-cyan) !important;
+}
+
+.mat-mdc-optgroup-label {
+    color: var(--text-faint) !important;
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+}
+
+/* Material dialog — cyber theme override */
+.cyber-dialog .mat-mdc-dialog-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-bright);
+    border-radius: 12px;
+    color: var(--text-primary);
+}
+
+.cyber-dialog .mat-mdc-dialog-surface {
+    background: var(--bg-card) !important;
+    border-radius: 12px !important;
+}
+
+.cyber-dialog input.mat-mdc-input-element,
+.cyber-dialog textarea.mat-mdc-input-element {
+    caret-color: var(--accent-cyan);
+}
+
+.cyber-dialog .mat-mdc-dialog-actions {
+    border-top: 1px solid var(--border);
+    padding: 0.75rem 1.25rem;
 }

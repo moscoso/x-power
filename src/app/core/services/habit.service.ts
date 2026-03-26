@@ -7,6 +7,7 @@ import {
     addDoc,
     updateDoc,
     deleteDoc,
+    deleteField,
     doc,
     serverTimestamp,
     Timestamp,
@@ -55,7 +56,11 @@ export class HabitService {
                     frequency: data['frequency'] ?? [1, 2, 3, 4, 5],
                     color: data['color'] ?? '#00e5ff',
                     createdAt: (data['createdAt'] as Timestamp)?.toDate() ?? new Date(),
+                    updatedAt: (data['updatedAt'] as Timestamp)?.toDate(),
                     order: data['order'] ?? 0,
+                    target: data['target'] ?? undefined,
+                    contextFields: data['contextFields'] ?? undefined,
+                    defaultContextValues: data['defaultContextValues'] ?? undefined,
                 };
             });
             this._habits.set(habits);
@@ -66,14 +71,25 @@ export class HabitService {
         const uid = this.auth.uid();
         if (!uid) return;
         const ref = collection(this.firebase.db, `users/${uid}/habits`);
-        await addDoc(ref, { ...data, createdAt: serverTimestamp() });
+        // Firestore rejects undefined — strip it on create
+        const sanitized = Object.fromEntries(
+            Object.entries({ ...data, createdAt: serverTimestamp() }).filter(
+                ([, v]) => v !== undefined,
+            ),
+        );
+        await addDoc(ref, sanitized);
     }
 
     async update(id: string, data: Partial<Omit<Habit, 'id' | 'createdAt'>>): Promise<void> {
         const uid = this.auth.uid();
         if (!uid) return;
         const ref = doc(this.firebase.db, `users/${uid}/habits/${id}`);
-        await updateDoc(ref, data as Record<string, unknown>);
+        // Firestore rejects undefined — convert to deleteField() so callers can clear optional fields
+        const sanitized: Record<string, unknown> = { updatedAt: serverTimestamp() };
+        for (const [key, val] of Object.entries(data as Record<string, unknown>)) {
+            sanitized[key] = val === undefined ? deleteField() : val;
+        }
+        await updateDoc(ref, sanitized);
     }
 
     async delete(id: string): Promise<void> {

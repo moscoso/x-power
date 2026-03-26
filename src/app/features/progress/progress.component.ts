@@ -2,6 +2,7 @@ import { Component, inject, computed } from '@angular/core';
 import { HabitService } from '../../core/services/habit.service';
 import { CompletionService } from '../../core/services/completion.service';
 import { HeatmapGridComponent } from '../../shared/components/heatmap-grid/heatmap-grid.component';
+import { Habit } from '../../core/models/habit.model';
 import { LucideAngularModule, Flame, TrendingUp } from 'lucide-angular';
 
 @Component({
@@ -32,25 +33,35 @@ import { LucideAngularModule, Flame, TrendingUp } from 'lucide-angular';
                                         [style.background]="item.habit.color"
                                         [style.box-shadow]="'0 0 6px ' + item.habit.color"
                                     ></span>
-                                    <span class="habit-name">{{ item.habit.title }}</span>
+                                    <div>
+                                        <span class="habit-name">{{ item.habit.title }}</span>
+                                        @if (item.habit.target) {
+                                            <span class="habit-unit">
+                                                · {{ item.habit.target.value }}
+                                                {{ item.habit.target.unit }}/day
+                                            </span>
+                                        }
+                                    </div>
                                 </div>
                                 <div class="habit-stats">
                                     <div class="stat">
                                         <lucide-icon [img]="FlameIcon" size="12" />
-                                        <span class="stat-value" [style.color]="item.habit.color">{{
-                                            item.streak
-                                        }}</span>
+                                        <span
+                                            class="stat-value"
+                                            [style.color]="item.habit.color"
+                                            >{{ item.streak }}</span
+                                        >
                                         <span class="stat-label">day streak</span>
                                     </div>
                                     <div class="stat">
                                         <lucide-icon [img]="TrendingIcon" size="12" />
                                         <span class="stat-value">{{ item.pct }}%</span>
-                                        <span class="stat-label">30-day rate</span>
+                                        <span class="stat-label">30-day avg</span>
                                     </div>
                                 </div>
                             </div>
                             <app-heatmap-grid
-                                [completionDates]="item.completionDates"
+                                [completionData]="item.completionData"
                                 [color]="item.habit.color"
                             />
                             <p class="streak-quip">{{ item.quip }}</p>
@@ -130,6 +141,12 @@ import { LucideAngularModule, Flame, TrendingUp } from 'lucide-angular';
                 color: var(--text-primary);
             }
 
+            .habit-unit {
+                font-size: 0.75rem;
+                color: var(--text-faint);
+                margin-left: 2px;
+            }
+
             .habit-stats {
                 display: flex;
                 gap: 1rem;
@@ -184,8 +201,8 @@ import { LucideAngularModule, Flame, TrendingUp } from 'lucide-angular';
     ],
 })
 export class ProgressComponent {
-    private habitService = inject(HabitService);
-    private completionService = inject(CompletionService);
+    private readonly habitService = inject(HabitService);
+    private readonly completionService = inject(CompletionService);
 
     protected readonly FlameIcon = Flame;
     protected readonly TrendingIcon = TrendingUp;
@@ -194,29 +211,35 @@ export class ProgressComponent {
 
     protected readonly habitStats = computed(() => {
         return this.habits().map((habit) => {
-            const completionDates = this.completionService.getCompletionDatesForHabit(habit.id);
-            const streak = this.calcStreak(completionDates, habit.frequency);
-            const pct = Math.round((completionDates.length / 30) * 100);
-            return {
-                habit,
-                completionDates,
-                streak,
-                pct,
-                quip: this.quip(streak, pct),
-            };
+            const completionData = this.buildCompletionData(habit.id);
+            const streak = this.calcStreak(habit);
+            const totalPct = completionData.reduce((sum, d) => sum + d.pct, 0);
+            const pct = Math.round(totalPct / completionData.length);
+            return { habit, completionData, streak, pct, quip: this.quip(streak, pct) };
         });
     });
 
-    private calcStreak(dates: string[], frequency: number[]): number {
-        const dateSet = new Set(dates);
+    private buildCompletionData(habitId: string): { date: string; pct: number }[] {
+        const today = new Date();
+        return Array.from({ length: 30 }, (_, i) => {
+            const d = new Date(today);
+            d.setDate(today.getDate() - (29 - i));
+            const date = d.toISOString().split('T')[0];
+            const pct = this.completionService.getCompletionPctForDate(habitId, date);
+            return { date, pct };
+        });
+    }
+
+    private calcStreak(habit: Habit): number {
         let streak = 0;
         const today = new Date();
         for (let i = 0; i < 30; i++) {
             const d = new Date(today);
             d.setDate(today.getDate() - i);
-            if (!frequency.includes(d.getDay())) continue;
-            const key = d.toISOString().split('T')[0];
-            if (dateSet.has(key)) {
+            if (!habit.frequency.includes(d.getDay())) continue;
+            const date = d.toISOString().split('T')[0];
+            const pct = this.completionService.getCompletionPctForDate(habit.id, date);
+            if (pct >= 100) {
                 streak++;
             } else {
                 break;
@@ -227,7 +250,7 @@ export class ProgressComponent {
 
     private quip(streak: number, pct: number): string {
         if (streak === 0 && pct === 0) return 'Not a single one. Remarkable.';
-        if (streak === 0) return `${pct}% done. The streak disagreed with your schedule.`;
+        if (streak === 0) return `${pct}% avg. The streak disagreed with your schedule.`;
         if (streak === 1) return '1 day. Either a comeback or a fluke. TBD.';
         if (streak < 5) return `${streak} days in. Don't ruin it now.`;
         if (streak < 10) return `${streak} days. You're starting to look consistent.`;

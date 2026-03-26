@@ -1,6 +1,6 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, computed } from '@angular/core';
 import { Habit } from '../../../core/models/habit.model';
-import { LucideAngularModule, Check, Pencil, Trash2 } from 'lucide-angular';
+import { LucideAngularModule, Check, Pencil, Trash2, Plus } from 'lucide-angular';
 
 @Component({
     selector: 'app-habit-card',
@@ -16,11 +16,20 @@ import { LucideAngularModule, Check, Pencil, Trash2 } from 'lucide-angular';
             <div class="card-body">
                 <div class="card-main">
                     <div class="card-info">
-                        <h3 class="habit-title" [class.done]="isCompleted()">
+                        <h3 class="habit-title" [class.done]="isCompleted() && !habit().target">
                             {{ habit().title }}
                         </h3>
                         @if (habit().description) {
                             <p class="habit-desc">{{ habit().description }}</p>
+                        }
+                        @if (habit().target) {
+                            <p class="progress-text">
+                                <span [style.color]="habit().color">{{ currentValue() }}</span>
+                                <span class="progress-sep"> / {{ habit().target!.value }} {{ habit().target!.unit }}</span>
+                            </p>
+                        }
+                        @if (firstPersistCtxValue()) {
+                            <p class="ctx-hint">{{ firstPersistCtxValue() }}</p>
                         }
                         <div class="freq-pills">
                             @for (day of dayLabels; track day.index) {
@@ -36,20 +45,45 @@ import { LucideAngularModule, Check, Pencil, Trash2 } from 'lucide-angular';
 
                     <div class="card-actions">
                         @if (showToggle()) {
-                            <button
-                                class="toggle-btn"
-                                [class.checked]="isCompleted()"
-                                (click)="toggled.emit()"
-                                [title]="isCompleted() ? 'Mark incomplete' : 'Mark complete'"
-                            >
-                                @if (isCompleted()) {
-                                    <lucide-icon
-                                        [img]="CheckIcon"
-                                        size="16"
-                                        class="check-animate"
-                                    />
-                                }
-                            </button>
+                            @if (habit().target) {
+                                <!-- Quantified: progress ring -->
+                                <button
+                                    class="ring-btn"
+                                    [style.--pct]="progressPct()"
+                                    (click)="toggled.emit()"
+                                    title="Log progress"
+                                >
+                                    <div class="ring-track">
+                                        <div class="ring-inner">
+                                            @if (isCompleted()) {
+                                                <lucide-icon
+                                                    [img]="CheckIcon"
+                                                    size="12"
+                                                    class="check-animate"
+                                                />
+                                            } @else {
+                                                <lucide-icon [img]="PlusIcon" size="11" />
+                                            }
+                                        </div>
+                                    </div>
+                                </button>
+                            } @else {
+                                <!-- Binary: check toggle -->
+                                <button
+                                    class="toggle-btn"
+                                    [class.checked]="isCompleted()"
+                                    (click)="toggled.emit()"
+                                    [title]="isCompleted() ? 'Mark incomplete' : 'Mark complete'"
+                                >
+                                    @if (isCompleted()) {
+                                        <lucide-icon
+                                            [img]="CheckIcon"
+                                            size="16"
+                                            class="check-animate"
+                                        />
+                                    }
+                                </button>
+                            }
                         }
 
                         @if (showActions()) {
@@ -87,7 +121,6 @@ import { LucideAngularModule, Check, Pencil, Trash2 } from 'lucide-angular';
 
                 &.completed {
                     opacity: 0.7;
-                    border-color: rgba(var(--habit-color), 0.3);
                 }
             }
 
@@ -131,7 +164,28 @@ import { LucideAngularModule, Check, Pencil, Trash2 } from 'lucide-angular';
             .habit-desc {
                 font-size: 0.78rem;
                 color: var(--text-muted);
-                margin: 0 0 0.5rem;
+                margin: 0 0 0.3rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .progress-text {
+                font-size: 0.78rem;
+                font-weight: 600;
+                margin: 0 0 0.3rem;
+            }
+
+            .progress-sep {
+                color: var(--text-faint);
+                font-weight: 400;
+            }
+
+            .ctx-hint {
+                font-size: 0.72rem;
+                color: var(--text-faint);
+                margin: 0 0 0.3rem;
+                font-style: italic;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
@@ -165,6 +219,7 @@ import { LucideAngularModule, Check, Pencil, Trash2 } from 'lucide-angular';
                 flex-shrink: 0;
             }
 
+            /* Binary toggle */
             .toggle-btn {
                 width: 28px;
                 height: 28px;
@@ -189,6 +244,46 @@ import { LucideAngularModule, Check, Pencil, Trash2 } from 'lucide-angular';
                     box-shadow: 0 0 12px var(--habit-color);
                     color: #000;
                 }
+            }
+
+            /* Quantified progress ring */
+            .ring-btn {
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 0;
+                flex-shrink: 0;
+                transition: filter 0.2s;
+
+                &:hover {
+                    filter: brightness(1.2);
+                }
+            }
+
+            .ring-track {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background: conic-gradient(
+                    var(--habit-color) 0% calc(var(--pct, 0) * 1%),
+                    var(--bg-elevated) 0%
+                );
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.3s ease;
+                box-shadow: 0 0 0 1px var(--border);
+            }
+
+            .ring-inner {
+                width: 24px;
+                height: 24px;
+                background: var(--bg-card);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--habit-color);
             }
 
             .icon-btn {
@@ -217,6 +312,7 @@ import { LucideAngularModule, Check, Pencil, Trash2 } from 'lucide-angular';
 export class HabitCardComponent {
     habit = input.required<Habit>();
     isCompleted = input<boolean>(false);
+    currentValue = input<number>(0);
     showToggle = input<boolean>(true);
     showActions = input<boolean>(false);
 
@@ -227,6 +323,7 @@ export class HabitCardComponent {
     protected readonly CheckIcon = Check;
     protected readonly PencilIcon = Pencil;
     protected readonly TrashIcon = Trash2;
+    protected readonly PlusIcon = Plus;
 
     protected readonly dayLabels = [
         { index: 0, label: 'Su' },
@@ -237,4 +334,19 @@ export class HabitCardComponent {
         { index: 5, label: 'Fr' },
         { index: 6, label: 'Sa' },
     ];
+
+    protected readonly progressPct = computed(() => {
+        const target = this.habit().target;
+        if (!target || target.value === 0) return 0;
+        return Math.min(100, Math.round((this.currentValue() / target.value) * 100));
+    });
+
+    protected readonly firstPersistCtxValue = computed(() => {
+        const fields = this.habit().contextFields;
+        const defaults = this.habit().defaultContextValues;
+        if (!fields || !defaults) return '';
+        const first = fields.find((f) => f.persist && defaults[f.id] !== undefined);
+        if (!first) return '';
+        return `${first.label}: ${defaults[first.id]}`;
+    });
 }

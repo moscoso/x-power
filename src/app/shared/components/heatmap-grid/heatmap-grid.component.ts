@@ -8,10 +8,11 @@ import { dateKey } from '../../../core/models/habit.model';
             @for (cell of cells(); track cell.date) {
                 <div
                     class="cell"
-                    [class.filled]="cell.completed"
-                    [style.background]="cell.completed ? color() : ''"
-                    [style.box-shadow]="cell.completed ? '0 0 6px ' + color() : ''"
-                    [title]="cell.label"
+                    [class.has-data]="cell.pct > 0"
+                    [style.background]="cell.pct > 0 ? color() : ''"
+                    [style.opacity]="cell.pct > 0 ? cellOpacity(cell.pct) : ''"
+                    [style.box-shadow]="cell.pct >= 100 ? '0 0 6px ' + color() : ''"
+                    [title]="cell.label + (cell.pct > 0 ? ' — ' + cell.pct + '%' : '')"
                 ></div>
             }
         </div>
@@ -31,9 +32,8 @@ import { dateKey } from '../../../core/models/habit.model';
                 border: 1px solid var(--border);
                 transition: all 0.2s ease;
 
-                &.filled {
+                &.has-data {
                     border-color: transparent;
-                    opacity: 0.9;
                 }
             }
 
@@ -46,11 +46,11 @@ import { dateKey } from '../../../core/models/habit.model';
     ],
 })
 export class HeatmapGridComponent {
-    completionDates = input<string[]>([]);
+    completionData = input<{ date: string; pct: number }[]>([]);
     color = input<string>('#00e5ff');
 
     protected cells = computed(() => {
-        const completedSet = new Set(this.completionDates());
+        const dataMap = new Map(this.completionData().map((d) => [d.date, d.pct]));
         const today = new Date();
         return Array.from({ length: 30 }, (_, i) => {
             const d = new Date(today);
@@ -58,9 +58,15 @@ export class HeatmapGridComponent {
             const key = dateKey(d);
             return {
                 date: key,
-                completed: completedSet.has(key),
+                pct: dataMap.get(key) ?? 0,
                 label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
             };
         });
     });
+
+    protected cellOpacity(pct: number): number {
+        // Partial: 0.25–0.7; Full: 0.9
+        if (pct >= 100) return 0.9;
+        return 0.25 + (pct / 100) * 0.45;
+    }
 }
